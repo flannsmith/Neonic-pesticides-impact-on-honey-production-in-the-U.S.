@@ -1,0 +1,848 @@
+{
+  "cells": [
+    {
+      "metadata": {
+        "_cell_guid": "79c7e3d0-c299-4dcb-8224-4455121ee9b0",
+        "collapsed": true,
+        "_uuid": "d629ff2d2480ee46fbb7e2d37f6b5fab8052498a",
+        "trusted": true
+      },
+      "cell_type": "code",
+      "source": "import pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\nimport matplotlib.patches as mpatches\nimport seaborn as sns\nsns.set()\nfrom matplotlib import style\nfrom matplotlib.backends.backend_pdf import PdfPages\n%matplotlib inline\nplt.style.use(['seaborn-dark'])\n%config IPCompleter.greedy=True\nfrom IPython.display import display\nfrom IPython.display import Image",
+      "execution_count": 1,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "b5fe5b8991bd6eec9bb194e0d6fb56e5da25bb9d"
+      },
+      "cell_type": "markdown",
+      "source": "### Key questions addressed:"
+    },
+    {
+      "metadata": {
+        "_uuid": "80bb8e1951465261aa48f46fcae84f980b6529d2"
+      },
+      "cell_type": "markdown",
+      "source": "> Do neonics impact total production, yield per colony and number of colonies?\n\n> What neonic compounds were most frequently used per state and over time?\n\n> Has production value and stocks increased or decreased with neonic usage?"
+    },
+    {
+      "metadata": {
+        "_uuid": "6e21e1820df4b0a3f3e11c7a386085d0e278ca2b"
+      },
+      "cell_type": "markdown",
+      "source": "*  For visualization purposes and ease of data handling I split the dataset into pre-and post neonics (2003) as it is stated in the data description that neonics were more heavily used after 2003. As you will see this distinction was not so clear-cut for all states and regions, with moderate use of neonics being deployed prior to 2003 before dramatically surging in use. \n\n\n*  This data set contains information on neonic usage per state from 1991 to 2016.\n\n*  I found this dataset extremely interesting and delightful to work with as mimimal cleaning was necessary and variable distribution was good. \n"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "1cb2d60e491ae94b45376bc8a204a3c0e76ec1dc",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df = pd.read_csv('../input/vHoneyNeonic_v03.csv')\n# Show data frame\ndf.head()",
+      "execution_count": 2,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "a7880c2f6e2e795ea382a9807279feef68e95df6",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#Checking for null values\ndf.isnull().sum()",
+      "execution_count": 3,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "collapsed": true,
+        "_uuid": "349ec2f7953333dbcee8b8cd89a13972b0b3b7a5"
+      },
+      "cell_type": "code",
+      "source": "#Fill all NaN with 0\ndf = df.fillna(0)",
+      "execution_count": 4,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "cfab39fca24698f812698c828bde519cfacf5e71",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df.shape",
+      "execution_count": 5,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "ec2f96058feb53879af1f4e3dbae49c08706f3ef",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df.dtypes",
+      "execution_count": 6,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "590503f76c46e6bc1a81b6406ab1e2a32a33b88a",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#Convert state, StateName, Region to category\n#Select all columns of type 'object'\nobject_columns = df.select_dtypes(['object']).columns\nobject_columns",
+      "execution_count": 7,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "db18b81a87976abccea4ae16fe19fe30aa799d61",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#Convert selected columns to type 'category'\nfor column in object_columns: \n    df[column] = df[column].astype('category')\ndf.dtypes",
+      "execution_count": 8,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "bdd435fb3b36366a7ed6dcabfcb7859ce273868b",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df.describe().T",
+      "execution_count": 9,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "2f8473a0320c602cc97000b40b0ecf7598df13a6",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df.corr()",
+      "execution_count": 10,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "1663fe28530bdd54310a4597f5c2173503b1703f",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#print unique features for each row\nprint(\"Feature, UniqueValues\") \nfor column in df:\n    print(column + \",\" + str(len(df[column].unique())))",
+      "execution_count": 11,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "5c8679b2c26dee62585839ba8554cde6e24f76e6"
+      },
+      "cell_type": "markdown",
+      "source": "### Correlation heatmap"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "collapsed": true,
+        "_uuid": "e64f6677532813bb860f36a75af184f10181e3e2"
+      },
+      "cell_type": "code",
+      "source": "#Add new column determined by pre- and post-neonics (2003)\ndf['post-neonics(2003)'] = np.where(df['year']>=2003, 1, 0)",
+      "execution_count": 12,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "00ec9f132fca2439b63a267f0195df49cdc6e0fa",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "# Correlation matrix using code found on https://stanford.edu/~mwaskom/software/seaborn/examples/many_pairwise_correlations.html\n#USA_youtube_df = pd.read_csv(\"USvideos.csv\")\nsns.set(style=\"white\")\n\n# Select columns containing continuous data\ncontinuous_columns = df[['numcol','yieldpercol','totalprod','stocks','priceperlb','prodvalue','year','nCLOTHIANIDIN','nIMIDACLOPRID','nTHIAMETHOXAM','nACETAMIPRID','nTHIACLOPRID','nAllNeonic','post-neonics(2003)']].columns\n\n# Calculate correlation of all pairs of continuous features\ncorr = df[continuous_columns].corr()\n\n# Generate a mask for the upper triangle\nmask = np.zeros_like(corr, dtype=np.bool)\nmask[np.triu_indices_from(mask)] = True\n\n# Set up the matplotlib figure\nf, ax = plt.subplots(figsize=(11, 9))\n\n# Generate a custom colormap - blue and red\ncmap = sns.diverging_palette(220, 10, as_cmap=True)\n\n# Draw the heatmap with the mask and correct aspect ratio\nsns.heatmap(corr, annot=True, mask=mask, cmap=cmap, vmax=1, vmin=-1,\n            square=True, xticklabels=True, yticklabels=True,\n            linewidths=.5, cbar_kws={\"shrink\": .5}, ax=ax)\nplt.yticks(rotation = 0)\nplt.xticks(rotation = 45)",
+      "execution_count": 13,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "90e3600442084fd17cd94bca39750ca9c73d6ca3"
+      },
+      "cell_type": "markdown",
+      "source": "### Exploring quantity of neonics used prior to 2003\n"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "collapsed": true,
+        "_uuid": "ac745f1a2102f082446bbf930cef4623ec9bfe7b"
+      },
+      "cell_type": "code",
+      "source": "#Making a new dataframe containing all data before 2003\ndf_pre_2003 = df[(df['year']<2003)]",
+      "execution_count": 14,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "collapsed": true,
+        "_uuid": "2c74540e1fe3045b79cf085bd2fd83161dd7d358"
+      },
+      "cell_type": "code",
+      "source": "#Making a new dataframe containing all data including and after 2003\ndf_2003 = df[(df['year']>=2003)]",
+      "execution_count": 15,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "0eeecae4aa5cf0e9a77c496d6d7c116f5334231c",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#Units of neonic used each year \ndf.groupby(['year'])['nAllNeonic'].sum()",
+      "execution_count": 16,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "collapsed": true,
+        "_uuid": "31d443e2453388d7ec281e4cd28963e47eb35d91"
+      },
+      "cell_type": "code",
+      "source": "import seaborn as sns\nplt.style.use(['seaborn-dark'])",
+      "execution_count": 17,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "4c6b9e76c7bec30c59cb77c41ab1044b06a4ec21",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_pre_2003.groupby(['year'])['nAllNeonic'].sum().plot(color='green')\nplt.title(\"Neonic usage prior to 2003\")",
+      "execution_count": 18,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "75f862f44013cf22c0dd8e8d6405c6e5559bb0f9",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_2003.groupby(['year'])['nAllNeonic'].sum().plot(color='green')\nplt.title(\"Neonic usage after 2003\")",
+      "execution_count": 19,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "cc7c918e0aae844557b6e5184c5d80e9f249ccd3",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#Timeline of neonic usage\ndf.groupby(['year'])['nAllNeonic'].sum().plot(color='green')\nplt.title(\"Complete timeline of neonic usage\")",
+      "execution_count": 20,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "63a0899f42f73db8646785b7450095dca8d3775c",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#bivariate distribution of all neonics vs. year\nsns.jointplot(data=df, x='year', y='nAllNeonic', kind='reg', color='g')",
+      "execution_count": 21,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "8861012119c9a17e59e6a3b05ee6e66cf3ded83d"
+      },
+      "cell_type": "markdown",
+      "source": "### Neonic usage by state"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "collapsed": true,
+        "_uuid": "bc688a31cf6d350f2c3f0eed1882b567751ffd71"
+      },
+      "cell_type": "code",
+      "source": "#Resizing plots\nplt.rcParams[\"figure.figsize\"] = (10, 5)\nplt.rcParams[\"xtick.labelsize\"] = 10\nplt.rcParams[\"ytick.labelsize\"] = 10",
+      "execution_count": 22,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "e8d07766666983d464edfcf1473fa1bc056f3f53",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_pre_2003.groupby(['StateName'])['nAllNeonic'].sum().plot(kind='bar')\nplt.title(\"Neonic usage by state prior to 2003\")\nplt.rcParams[\"figure.figsize\"] = (10, 5)\nplt.rcParams[\"xtick.labelsize\"] = 10\nplt.rcParams[\"ytick.labelsize\"] = 10",
+      "execution_count": 23,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "b08633e85523c60ce1f484484b3a23adce8ea6c2",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_2003.groupby(['StateName'])['nAllNeonic'].sum().plot(kind='bar')\nplt.title(\"Neonic usage by state post 2003\")",
+      "execution_count": 24,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "7fc64f1c701f682f4c6794b393a12b9cfaf522e0",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_pre_2003.groupby(['Region'])['nAllNeonic'].sum().plot(kind='bar')\nplt.title(\"Neonic use prior to 2003\")",
+      "execution_count": 25,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "5a611338e3bd5e74c284d78f35ab705070f4d644",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_2003.groupby(['Region'])['nAllNeonic'].sum().plot(kind='bar')\nplt.title(\"Neonic usage after 2003\")",
+      "execution_count": 26,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "642112840665a3bd153519ae4f5aa377e325cd9a"
+      },
+      "cell_type": "markdown",
+      "source": "> ``California`` was leading the way in neonics usage prior to 2003, being the state most heavily invested in their use out of a total of 44 states.\n\n> States in the ``NorthEast`` have consistently used low amounts of neonics- will be interesting to see their totalprod, yieldpercol and no. of colonies.\n\n> It is interesting that ``South`` and ``West`` regions were using the most neonics prior to 2003 but this switched after 2003 and they are now using the least amount. Perhaps detrimental effects of neonics were evident and caused a decrease in colony numbers leading to a reduction in amount of neonics required or else colony sizes/honey production farming were reduced in these regions due to external reasons. \n\n> To check this hypothesis I will plot colony size of region by year."
+    },
+    {
+      "metadata": {
+        "_uuid": "3a4b069897f344a4da09d99b85c8d16fc5afc888"
+      },
+      "cell_type": "markdown",
+      "source": "### Number of colonies per region over time"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "2a5fa403afdf66a53a07e93c0da47a70bdaca1b1",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.FacetGrid(df, col=\"Region\") \ng.map(sns.regplot, \"year\", \"numcol\", line_kws={\"color\": \"red\"})",
+      "execution_count": 27,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "collapsed": true,
+        "_uuid": "94766dace6398309ca1b7ebe9c991ae1e7b873a7"
+      },
+      "cell_type": "markdown",
+      "source": "> The ``Midwest`` is the only region is where the no. of colonies appear to be increasing despite a massive increase in neonic usage after 2003.\n\n> No. of colonies in the ``NorthEast`` are consistent with no dramatic fluctuations, corresponding to a consistently small usage of neonics, but appear to be slightly decreasing overall.\n\n> In the ``South`` a slight decrease in no. of colonies can be seen after 2003 which coincides with a decrease in neonic usage, although colony numbers appear to be on the rise/maintaining a consistent number in the future.\n\n> A decrease in the no. of colonies can also be said for the ``West`` region."
+    },
+    {
+      "metadata": {
+        "_uuid": "2ef26d4e183159aa4874be90af025e1dfec9c8c1"
+      },
+      "cell_type": "markdown",
+      "source": "### No. of colonies by state "
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "f79dc36657a48d33218eaf54d418d09b1ef08116",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_pre_2003.groupby(['StateName'])['numcol'].sum().plot(kind='bar')\nplt.title('No. of colonies per state pre-2003')",
+      "execution_count": 28,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "3577b83c5bd9b28de88d93516641fbd9c06fa94d",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_2003.groupby(['StateName'])['numcol'].sum().plot(kind='bar')\nplt.title('Number of colonies per state from 2003 to present')",
+      "execution_count": 29,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "66a941953ebbb7010031ee275af0d77e22a2f248"
+      },
+      "cell_type": "markdown",
+      "source": ">It is interesting that North Dakota surpassed California after 2003 in terms of no. of colonies and were very conservative with neonic usage prior to 2003 when compared to California.\n\n> Florida, Texas and Idaho's no. of colonies appear to have remained consistent over time.\n\n>This information will be useful for further analysis to compare total production and yield per colony pre- and post-2003 by state."
+    },
+    {
+      "metadata": {
+        "_uuid": "9c77e074f143d2152f6447a6904f2e4c557e2fda"
+      },
+      "cell_type": "markdown",
+      "source": "### Popularity of neonic compound used by each state"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "d69cc1413a3c327553090d46f310ec3776db745d",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_pre_2003.groupby(['StateName'])['nIMIDACLOPRID'].sum().plot(kind='bar')\nplt.title('nIMIDACLOPRID usage pre-2003')",
+      "execution_count": 30,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "1f60b87774690def87f0f8c8a522d47020a06a21",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_pre_2003.groupby(['StateName'])['nTHIAMETHOXAM'].sum().plot(kind='bar')\nplt.title('nTHIAMETHOXAM usage pre-2003')",
+      "execution_count": 31,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "3286be7cee05f98bad4abe11ef6bf08f2932a744",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_pre_2003.groupby(['StateName'])['nACETAMIPRID'].sum().plot(kind='bar')\nplt.title('nACETAMIPRID usage pre-2003')",
+      "execution_count": 32,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "3acab106aa4e4ee1acbdacd2e09442203c40437d",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df_pre_2003.groupby(['StateName'])['nAllNeonic'].sum().plot(kind='bar')\nplt.title('All Neonic usage pre-2003')",
+      "execution_count": 33,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "20582491fe0981221dacfe74dbf7e0a994915f3f",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "df.groupby(['StateName'])['nAllNeonic'].sum().plot(kind='bar')\nplt.title(\"All neonic usage per state\")",
+      "execution_count": 50,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "a7f834e0a26de217b76f4976c5b226540eb1c9bb"
+      },
+      "cell_type": "markdown",
+      "source": "### Findings so far:"
+    },
+    {
+      "metadata": {
+        "_uuid": "4ffd5f5c4f88c7a25b8848c2cc0631038759902c"
+      },
+      "cell_type": "markdown",
+      "source": "> The information provided with the data states that neonics were used in small amounts before 2003 and then in larger quantities afterwards. We can see that California was heavily using the neonics ``nACETAMIPRID``, ``nTHIAMETHOXAM``, ``nIMIDACLOPRID`` prior to 2003. \n\n>The neonics ``nTHIACLOPRID`` and ``nCLOTHIANIDIN`` had not been in use prior to 2003 or perhaps were not yet developed.\n\n>Other states that were using neonics in large quantities were ``Texas``, ``Washington``, and ``Mississippi``, with the most popular neonic in usage in the years before 2003 being ``nTHIAMETHOXAM`` with quite a few states using it on their colonies.\n\n>States located in the ``South`` and ``West`` regions were more heavily involved in neonic deployment before 2003. This is in contrast to after 2003 when the ``Midwest`` surpasses all other regions in neonic usage and the states in the ``South`` and ``West`` reduce their neonic usage.\n\n> California, Illinois and Iowa are responsible for the most neonic deployment. \n\n"
+    },
+    {
+      "metadata": {
+        "_uuid": "47642d36f3e6b27b1777460542ae6987c25ae34f"
+      },
+      "cell_type": "markdown",
+      "source": "#### Yield per colony over time in each region"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "a36b7e8c3d286f7ab6a9e4f8aee764b480af5879",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#Yield per colony over time in each region\ng = sns.FacetGrid(df, col=\"Region\") \ng.map(sns.regplot, \"year\", \"yieldpercol\", line_kws={\"color\": \"red\"})",
+      "execution_count": 34,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "46a1c4c32aba3698f3e44d38478e808118aa532c"
+      },
+      "cell_type": "markdown",
+      "source": "#### Total production per region over time"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "933e0ead1b4a9025e9204e7dce1d59474d6b7d79",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "#Total production per region over time\ng = sns.FacetGrid(df, col=\"Region\") \ng.map(sns.regplot, \"year\", \"totalprod\", line_kws={\"color\": \"red\"})",
+      "execution_count": 36,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "277f2304d52f9894fdd4684b11e2232bc12b2c6b"
+      },
+      "cell_type": "markdown",
+      "source": "### Most prevalent neonic compound in use in U.S."
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "9294212db6653ff8edbe7cd98b0826b8eb5c7139",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df.sort_values('year'), marker='', color='blue', linewidth=2)\nplt.plot( 'year', 'nIMIDACLOPRID', data=df.sort_values('year'), marker='', color='olive', linewidth=2)\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df.sort_values('year'), marker='', color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df.sort_values('year'), marker='', color='orange', linewidth=2, label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df.sort_values('year'), marker='', color='#cd71ff', linewidth=2, label=\"nTHIACLOPRID\")\nplt.legend()\nplt.title(\"Neonic usage over time\")",
+      "execution_count": 37,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "96a4a58eb047c3cb6a7df3967f44b50b9ee62438"
+      },
+      "cell_type": "markdown",
+      "source": "## Case study: \n#### Interesting States- California, North Dakota, Washington, Florida, Texas, Mississippi. "
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "8218fc0de1717ab8ab684c21a61521d8e9b8c7c0",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.lmplot(x=\"year\", y=\"totalprod\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='California'])\ng.set_axis_labels(\"Year\", \"Total Production\")\nplt.title('California')\n\ng = sns.lmplot(x=\"year\", y=\"yieldpercol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='California'])\ng.set_axis_labels(\"Year\", \"Yield per col\")\nplt.title('California')\n\ng = sns.lmplot(x=\"year\", y=\"numcol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='California'])\ng.set_axis_labels(\"Year\", \"No. of colonies\")\nplt.title('California')",
+      "execution_count": 44,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "5aab07e7ab98243ef53b47b55c9a4a6a37a9ecfe",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df[df.StateName==\"California\"].sort_values('year'), marker='', color='blue', linewidth=2)\nplt.plot( 'year', 'nIMIDACLOPRID', data=df[df.StateName==\"California\"].sort_values('year'), marker='', color='olive', linewidth=2)\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df[df.StateName==\"California\"].sort_values('year'), marker='', color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df[df.StateName==\"California\"].sort_values('year'), marker='', color='orange', linewidth=2, label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df[df.StateName==\"California\"].sort_values('year'), marker='', color='pink', linewidth=2, label=\"nTHIACLOPRID\")\nplt.legend()",
+      "execution_count": 45,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "d735a10dd4d08a2cf6a5bd9745c5e6cfac17231f"
+      },
+      "cell_type": "markdown",
+      "source": "California's no. of colonies, yield per colony and total production have been decreasing consistently since their frequent heavy use of neonics in 1994, namely Imidacloprid."
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "35fe687cbac0828222c6f46428252b8f8735498d",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.lmplot(x=\"year\", y=\"totalprod\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Illinois'])\ng.set_axis_labels(\"Year\", \"Total Production\")\nplt.title('Illinois')\n\ng = sns.lmplot(x=\"year\", y=\"yieldpercol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Illinois'])\ng.set_axis_labels(\"Year\", \"Yield per col\")\nplt.title('Illinois')\n\ng = sns.lmplot(x=\"year\", y=\"numcol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Illinois'])\ng.set_axis_labels(\"Year\", \"No. of colonies\")\nplt.title('Illinois')",
+      "execution_count": 51,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "ffcbb34f4b94ac8b929b891bb93acd67d01a44c8",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df[df.StateName==\"Illinois\"].sort_values('year'), marker='', color='blue', linewidth=2)\nplt.plot( 'year', 'nIMIDACLOPRID', data=df[df.StateName==\"Illinois\"].sort_values('year'), marker='', color='olive', linewidth=2)\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df[df.StateName==\"Illinois\"].sort_values('year'), marker='', color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df[df.StateName==\"Illinois\"].sort_values('year'), marker='', color='orange', linewidth=2, label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df[df.StateName==\"Illinois\"].sort_values('year'), marker='', color='pink', linewidth=2, label=\"nTHIACLOPRID\")\nplt.title('Illinois')\nplt.legend()",
+      "execution_count": 56,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "1dd9108e5f0aeb480779d4d4b4c53c3a827452ee"
+      },
+      "cell_type": "markdown",
+      "source": "It is interesting to see Illinois's yield per colony was increasing prior to 2003 when they were using no neonics. "
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "165be99728f182161597103b7a5d6788dfe2ac0b",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.lmplot(x=\"year\", y=\"totalprod\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Iowa'])\ng.set_axis_labels(\"Year\", \"Total Production\")\nplt.title('Iowa')\n\ng = sns.lmplot(x=\"year\", y=\"yieldpercol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Iowa'])\ng.set_axis_labels(\"Year\", \"Yield per col\")\nplt.title('Iowa')\n\ng = sns.lmplot(x=\"year\", y=\"numcol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Iowa'])\ng.set_axis_labels(\"Year\", \"No. of colonies\")\nplt.title('Iowa')",
+      "execution_count": 53,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "220d399e90eadf063d9eccc0537db07b0302cf7a",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df[df.StateName==\"Iowa\"].sort_values('year'), marker='', color='blue', linewidth=2)\nplt.plot( 'year', 'nIMIDACLOPRID', data=df[df.StateName==\"Iowa\"].sort_values('year'), marker='', color='olive', linewidth=2)\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df[df.StateName==\"Iowa\"].sort_values('year'), marker='', color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df[df.StateName==\"Iowa\"].sort_values('year'), marker='', color='orange', linewidth=2, label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df[df.StateName==\"Iowa\"].sort_values('year'), marker='', color='pink', linewidth=2, label=\"nTHIACLOPRID\")\nplt.title(\"Iowa\")\nplt.legend()",
+      "execution_count": 57,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "393a75a006a22bdada8559ce33eba1a52ac1af98"
+      },
+      "cell_type": "markdown",
+      "source": "Similar to Illinois, Iowa's total production and number of colonies were decreasing before 2003., with yield per colony increasing. Their number of colonies, however, were rapidly decreasing. In both these cases, it would seem that the introduction of neonics was beneficial in slowing colony collapse and colony numbers are now on the rise. "
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "c133fdfa4d8cf34399b8a469e2b87a30f8af9868",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.lmplot(x=\"year\", y=\"totalprod\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='North Dakota'])\ng.set_axis_labels(\"Year\", \"Total Production\")\nplt.title('North Dakota')\n\ng = sns.lmplot(x=\"year\", y=\"yieldpercol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='North Dakota'])\ng.set_axis_labels(\"Year\", \"Yield per col\")\nplt.title('North Dakota')\n\ng = sns.lmplot(x=\"year\", y=\"numcol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='North Dakota'])\ng.set_axis_labels(\"Year\", \"No. of colonies\")\nplt.title('North Dakota')",
+      "execution_count": 58,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "bf34ce8db1c061f5f7bf4e89ee59c5ccdf40a393",
+        "trusted": true,
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df[df.StateName==\"North Dakota\"].sort_values('year'), marker='', color='blue', linewidth=2)\nplt.plot( 'year', 'nIMIDACLOPRID', data=df[df.StateName==\"North Dakota\"].sort_values('year'), marker='', color='olive', linewidth=2)\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df[df.StateName==\"North Dakota\"].sort_values('year'), marker='', color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df[df.StateName==\"North Dakota\"].sort_values('year'), marker='', color='orange', linewidth=2, label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df[df.StateName==\"North Dakota\"].sort_values('year'), marker='', color='pink', linewidth=2, label=\"nTHIACLOPRID\")\nplt.legend()",
+      "execution_count": 47,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "b726a3c030511466e7ee3736f354078dbad7b255"
+      },
+      "cell_type": "markdown",
+      "source": "North Dakota is one of the only states where both the number of colonies and total production have increased over time, despite overall yield per colony plummeting. Perhaps this can be attributed to their conservative usage of Imidacloprid from 1996 onwards. The neonic compound most used by this state in recent years is Clothianidin. "
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "3b657050d29629e45e35146be645ab4d1b2419a2",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.lmplot(x=\"year\", y=\"totalprod\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Idaho'])\ng.set_axis_labels(\"Year\", \"Total Production\")\nplt.title('Idaho')\n\ng = sns.lmplot(x=\"year\", y=\"yieldpercol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Idaho'])\ng.set_axis_labels(\"Year\", \"Yield per col\")\nplt.title('Idaho')\n\ng = sns.lmplot(x=\"year\", y=\"numcol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Idaho'])\ng.set_axis_labels(\"Year\", \"No. of colonies\")\nplt.title('Idaho')",
+      "execution_count": 59,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "16f298eb9641aa515366071ecc93497a55de8531",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df[df.StateName==\"Idaho\"].sort_values('year'), marker='', color='blue', linewidth=2, label=\"nCLOTHIANIDIN\")\nplt.plot( 'year', 'nIMIDACLOPRID', data=df[df.StateName==\"Idaho\"].sort_values('year'), marker='', color='olive', linewidth=2, label=\"nIMIDACLOPRID\")\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df[df.StateName==\"Idaho\"].sort_values('year'), marker='', color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df[df.StateName==\"Idaho\"].sort_values('year'), marker='', color='orange', linewidth=2, label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df[df.StateName==\"Idaho\"].sort_values('year'), marker='', color='pink', linewidth=2, label=\"nTHIACLOPRID\")\nplt.legend()",
+      "execution_count": 60,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "046fbed0f28b1abfbb4272779e59c9fbd304962c"
+      },
+      "cell_type": "markdown",
+      "source": "Upon further analysis, Idaho's no. of colonies are decreasing rapidly with increasing neonic usage. Yield per colony and total production is also decreasing. "
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "0269b0246e75c3918b5e94f471a05c79053f8bb5",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.lmplot(x=\"year\", y=\"totalprod\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Washington'])\ng.set_axis_labels(\"Year\", \"Total Production\")\nplt.title('Washington')\n\ng = sns.lmplot(x=\"year\", y=\"yieldpercol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Washington'])\ng.set_axis_labels(\"Year\", \"Yield per col\")\nplt.title('Washington')\n\ng = sns.lmplot(x=\"year\", y=\"numcol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Washington'])\ng.set_axis_labels(\"Year\", \"No. of colonies\")\nplt.title('Washington')",
+      "execution_count": 61,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "73fde64a9b99c2a7fb46841bbc58f6e1da98c72f",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df[df.StateName==\"Washington\"].sort_values('year'), marker='', color='blue', linewidth=2, label=\"nCLOTHIANIDIN\")\nplt.plot( 'year', 'nIMIDACLOPRID', data=df[df.StateName==\"Washington\"].sort_values('year'), marker='', color='olive', linewidth=2, label=\"nIMIDACLOPRID\")\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df[df.StateName==\"Washington\"].sort_values('year'), marker='', color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df[df.StateName==\"Washington\"].sort_values('year'), marker='', color='orange', linewidth=2, label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df[df.StateName==\"Washington\"].sort_values('year'), marker='', color='pink', linewidth=2, label=\"nTHIACLOPRID\")\nplt.legend()",
+      "execution_count": 62,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "e842f9cb7d76d20ed941b7ade5d2835730fa22bb"
+      },
+      "cell_type": "markdown",
+      "source": "Washington's total production appears to have increased after 2003 but there are a lot of outliers so this conclusion could be questioned. Washington's no. of colonies has increased rapidly after 2003 but the yield per colony is decreasing. Washington's history of neonic usage is extensive and varied with Imidacloprid being the most heavily used.  "
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "d3ebcffc9fb7ada71ad5078a38e899628e55a1d3",
+        "scrolled": false,
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.lmplot(x=\"year\", y=\"totalprod\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Florida'])\ng.set_axis_labels(\"Year\", \"Total Production\")\nplt.title('Florida')\n\ng = sns.lmplot(x=\"year\", y=\"yieldpercol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Florida'])\ng.set_axis_labels(\"Year\", \"Yield per col\")\nplt.title('Florida')\n\ng = sns.lmplot(x=\"year\", y=\"numcol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Florida'])\ng.set_axis_labels(\"Year\", \"No. of colonies\")\nplt.title('Florida')",
+      "execution_count": 70,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "cef3486dfe55894251cce2c5d0607b6b10556237",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df[df.StateName==\"Florida\"].sort_values('year'), marker='', color='blue', linewidth=2)\nplt.plot( 'year', 'nIMIDACLOPRID', data=df[df.StateName==\"Florida\"].sort_values('year'), marker='', color='olive', linewidth=2)\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df[df.StateName==\"Florida\"].sort_values('year'), marker='', color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df[df.StateName==\"Florida\"].sort_values('year'), marker='', color='orange', linewidth=2,linestyle='dashed', label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df[df.StateName==\"Florida\"].sort_values('year'), marker='', color='pink', linewidth=2, label=\"nTHIACLOPRID\")\nplt.legend()",
+      "execution_count": 64,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "2d70462debef95167cdc9cc66ac89e11e7a51c57"
+      },
+      "cell_type": "markdown",
+      "source": "Florida's total production, yield per colony and number of colonies were stable and increasing before 2003 with only moderate use of Imidacloprid. Now however,  total production and yield per colony is at an all time low despite their no. of colonies increasing. "
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "7859a4e870f2372a6ee7659419babb3915a17b28",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "g = sns.lmplot(x=\"year\", y=\"totalprod\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Texas'])\ng.set_axis_labels(\"Year\", \"Total Production\")\nplt.title('Texas')\n\ng = sns.lmplot(x=\"year\", y=\"yieldpercol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Texas'])\ng.set_axis_labels(\"Year\", \"Yield per col\")\nplt.title('Texas')\n\ng = sns.lmplot(x=\"year\", y=\"numcol\", hue=\"post-neonics(2003)\",\n               truncate=True, size=5, data=df[df.StateName =='Texas'])\ng.set_axis_labels(\"Year\", \"No. of colonies\")\nplt.title('Texas')",
+      "execution_count": 65,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "154969f12f8d1c90a2aad8f612a9b319e196c835",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "plt.plot( 'year', 'nCLOTHIANIDIN', data=df[df.StateName==\"Texas\"].sort_values('year'), color='blue', linewidth=2)\nplt.plot( 'year', 'nIMIDACLOPRID', data=df[df.StateName==\"Texas\"].sort_values('year'), color='olive', linewidth=2)\nplt.plot( 'year', 'nTHIAMETHOXAM', data=df[df.StateName==\"Texas\"].sort_values('year'), color='red', linestyle='dashed', linewidth=2, label=\"nTHIAMETHOXAM\")\nplt.plot( 'year', 'nACETAMIPRID', data=df[df.StateName==\"Texas\"].sort_values('year'), color='orange', linewidth=2, label=\"nACETAMIPRID\")\nplt.plot( 'year', 'nTHIACLOPRID', data=df[df.StateName==\"Texas\"].sort_values('year'), color='pink', linewidth=2, label=\"nTHIACLOPRID\")\nplt.legend()\nplt.title('Texas')",
+      "execution_count": 66,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "0fddf1a910b42a123c13b2aebf83517baf486a8d"
+      },
+      "cell_type": "markdown",
+      "source": "A large number of outliers in the total production and no. of colonies columns make it hard to definitively conclude they are in fact increasing post-2003, although it it is certain that yield per colony is decreasing. "
+    },
+    {
+      "metadata": {
+        "_uuid": "f2daf3f9bb13efdd5893fabe0ffbd26eca18cfa3"
+      },
+      "cell_type": "markdown",
+      "source": "### Economics of honey production"
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "0199f7bd82078989a36af21e4f510ccd30f9a4d0",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "sns.jointplot(data=df, x='year', y='priceperlb', kind='reg', color='g')",
+      "execution_count": 67,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "b9ec3a9d4930c0a25ac56bdfea7f51945e0463e6",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "sns.jointplot(data=df, x='year', y='stocks', kind='reg', color='g')",
+      "execution_count": 68,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "361bd06073df4b257fd4301cf2b41e5e515579cf",
+        "collapsed": true
+      },
+      "cell_type": "code",
+      "source": "sns.jointplot(data=df, x='year', y='prodvalue', kind='reg', color='g')",
+      "execution_count": 69,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_uuid": "ed8e20a8aef558529828afd20d01c9f3ae2cfc81"
+      },
+      "cell_type": "markdown",
+      "source": "### My interpretations:"
+    },
+    {
+      "metadata": {
+        "_uuid": "111d4bbfcc3a3cb10f3a564c6097e79335d0c123"
+      },
+      "cell_type": "markdown",
+      "source": "*  Neonics were introduced in the U.S. to combat parasitic mites that attack bees. Colony numbers appear to have been decreasing in a lot of states prior to the introduction of neonics. In the case of Texas, Florida, Washington, Idaho, Iowa, Illinois, their colony numbers were decreasing prior to heavy neonic deployment in 2003. In these states it would seem that the introduction of neonics was beneficial in slowing and preventing large scale colony collapse.\n\n* Although a number of states have restored their number of colonies, it is clear that neonics are severly affecting yield per colony.\n\n* North Dakota is an interesting case study whereby both the number of colonies and total production have increased over time, despite overall yield per colony plummeting. Perhaps this can be attributed to their conservative usage of Imidacloprid from 1996 onwards. The neonic compound most used by this state is clothianidin.\n\n* California's heavy and consistent use of Imidacloprid from 1994 might have been a factor in them not regaining their colony numbers. Starting in 1995, Idaho also used increasing and consistent quantities of imidacloprid. States that still have decreasing number of colonies seemed to be using increasing amounts of Imidacloprid from a very early stage so perhaps this compound has a net cumulative negative effect. \n\n* Illinois and Iowa used the most neonics after California. Unlike California though their number of colonies are on the rise and they predominantly used the compound clothianidin.\n\n* An overall trend is a decrease in neonic usage in the U.S. after 2014. Have neonics become less effective? Are more people becoming aware of their toxic effects? \n\n*  Overall, neonic pesticides are negatively impacting bee colonies in the U.S. This corresponds with the surmounting scientific evidence of the detrimental effects of neonics on both wild and farmed bees:\n\n\n         Whitehorn, Penelope R., et al. \"Neonicotinoid pesticide reduces bumble bee colony growth \n         and queen production.\" Science (2012): 1215025.\n                  \n         Di Prisco, Gennaro, et al. \"Neonicotinoid clothianidin adversely affects insect immunity \n         and promotes replication of a viral pathogen in honey bees.\" Proceedings of the \n         National Academy of Sciences 110.46 (2013): 18466-18471.\n                \n         Godfray, H. Charles J., et al. \"A restatement of the natural science evidence base \n         concerning neonicotinoid insecticides and insect pollinators.\" \n         Proc. R. Soc. B 281.1786 (2014): 20140558.\n\n* Price per lb and production value of honey is increasing while stocks are decreasing.\n\n* Neonic usage in the U.S.A is highly varied by state and other factors such as climate and proximity of colonies to areas of high radiation need to be taken into consideration as well as neonics. \n\n* Although research points to all neonic pesticides being toxic, more analysis and information is required to deduce whether a particular neonic compound is more detrimental or beneficial to bee colonies. "
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "name": "python",
+      "version": "3.6.5",
+      "mimetype": "text/x-python",
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "pygments_lexer": "ipython3",
+      "nbconvert_exporter": "python",
+      "file_extension": ".py"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 1
+}
